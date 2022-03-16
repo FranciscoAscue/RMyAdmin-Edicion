@@ -43,6 +43,12 @@ server <- function(input, output, session) {
   )
   
   
+  output$point <- renderPlotly({
+    
+      plot_ly(mysql_explore(), x= ~FECHA_TM, y = ~CT, color = ~MOTIVO, text= ~NETLAB, type = 'scatter', mode = "markers")
+    
+  })
+
   output$tablemysql <- DT::renderDataTable(mysql_explore(), extensions = 'Buttons',
                                            options = list( dom = 'Blfrtip', buttons = c('copy', 'excel')),
                                            rownames = FALSE,server = FALSE, escape = FALSE, selection = 'none')
@@ -56,7 +62,8 @@ server <- function(input, output, session) {
   
   mysql_explore <- reactive({
     data <- metadata_sql(corrida = input$corrida, placa = input$placa)
-    data # <- data[,-c(6, 20, 22,24,25,29)]
+    data$FECHA_TM <- as.Date(data$FECHA_TM)
+    data
   })
   
   inputData <- reactive({

@@ -23,7 +23,7 @@ missingPackages <- function(pkg){
 }
 ################################################################################
 
-dependencies <- c("shiny","shinycssloaders","pheatmap","plotly","fossil",
+dependencies <- c("shiny","shinycssloaders","plotly","fossil",
                   "remotes","dplyr","DT","htmlwidgets","viridisLite","viridis",
                   "RColorBrewer")
 

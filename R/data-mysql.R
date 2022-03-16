@@ -5,7 +5,7 @@ if( !is.element("RMySQL",rownames(installed.packages() ) ) ){
 library(RMySQL)
 
 ## data from MySQL
-metadata_sql <- function(corrida, placa, mindate = NULL, maxdate = NULL){
+metadata_sql <- function(corrida, placa = "placa1"){
   
   con <- dbConnect(MySQL(),
                    user = 'root',
@@ -13,18 +13,10 @@ metadata_sql <- function(corrida, placa, mindate = NULL, maxdate = NULL){
                    host = 'localhost',
                    dbname = 'seqcoviddb')
   
-  if( !is.null(mindate) & !is.null(maxdate)){
-    query = paste0("SELECT NUMERACION_PLACA,NETLAB,OFICIO,CT,FECHA_TM,PROCEDENCIA,APELLIDO_NOMBRE,DNI_CE,VACUNADO,MOTIVO FROM `metadata` WHERE `FECHA_TM` BETWEEN '",
-                   mindate,"' AND '",maxdate,"';")
-  }else{
-    if(is.null(placa)){
-      query = paste0("SELECT NUMERACION_PLACA,NETLAB,OFICIO,CT,FECHA_TM,PROCEDENCIA,APELLIDO_NOMBRE,DNI_CE,VACUNADO,MOTIVO FROM `metadata` WHERE `CORRIDA` = ",
-                     corrida," ;")
-    }else{
-      query = paste0("SELECT NUMERACION_PLACA,NETLAB,OFICIO,CT,FECHA_TM,PROCEDENCIA,APELLIDO_NOMBRE,DNI_CE,VACUNADO,MOTIVO FROM `metadata` WHERE `PLACA` = '",
-                     placa,"' AND `CORRIDA` = ",corrida," ;")
-    }
-  }
+  
+  query = paste0("SELECT NUMERACION_PLACA,NETLAB,OFICIO,CT,FECHA_TM,PROCEDENCIA,APELLIDO_NOMBRE,DNI_CE,VACUNADO,MOTIVO FROM `metadata` WHERE `PLACA` = '",
+                     placa,"' AND `CORRIDA` = ",corrida,";")
+
   dbSendQuery(con, "SET NAMES utf8mb4;")
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
