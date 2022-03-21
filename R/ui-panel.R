@@ -11,19 +11,20 @@ DataExp <- tabPanel("EXPLORACION",
                                 tags$img(src="https://raw.githubusercontent.com/rstudio/hex-stickers/master/thumbs/shiny.png",width="60px",height="60px"),
                                 tags$img(src="https://i1.wp.com/fileserialkey.com/wp-content/uploads/2019/07/2-2.png?fit=300%2C300&ssl=1",width="60px",height="60px"),
                            )),
-                           numericInput("corrida", label = "Ingrese una corrida", value = 1031, min = 27, max = 1040),
+                           numericInput("corrida", label = "Ingrese una corrida", value = 500, min = 27, max = 1040),
                            selectInput(inputId = "placa",
                                        label = "Selecciona una placa",
                                        choices = c("placa1","placa2","placa3","placa4","placa5","placa6"),
-                                       selected = "placa1")),
+                                       selected = "placa1"),
+                           h3(icon("file-excel"), "Descarga de Excel"),
+                           h3(icon("table"), "Busqueda de datos"),
+                           ),
                     column(9,
                            shinycssloaders::withSpinner(
                              DT::dataTableOutput("tablemysql"), type = 3, color.background = "white", color = "blue"),
                     ),
                     column(12 , h2("")),
-                    column(12 , column(3, h3(icon("file-excel"), "Descarga de Excel"),
-                                       h3(icon("table"), "Busqueda de datos"),
-                                       h3(icon("chart-pie"), "Graficas de dispersion")), 
+                    column(12 , column(3, h3(icon("chart-pie"), "Graficas de dispersion")), 
                            column(9, plotlyOutput("point")))
                     
                     
@@ -65,11 +66,7 @@ UdateData <- navbarPage(theme = shinytheme("flatly"),
                                  shiny::includeScript("script.js"),
                                  column(1," "),
                                  
-                        ), DataExp, 
-                        footer = tags$div(
-                          class = "footer",h3(p(style="color:black;text-align:left", 
-                                                tags$img(src="https://media.slid.es/uploads/1121994/images/6529504/minsa.jpg",width="190px",height="70px"))),
-                          tags$style(".footer{position:absolute;bottom:0; width:100%;}"))
+                        ), DataExp
 )
 
 

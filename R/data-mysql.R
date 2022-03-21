@@ -1,31 +1,28 @@
-if( !is.element("RMySQL",rownames(installed.packages() ) ) ){
-  install.packages("RMySQL")
-}
-
+library(DBI)
 library(RMySQL)
 
 ## data from MySQL
-metadata_sql <- function(corrida, placa = "placa1"){
+metadata_sql <- function(usr, pass, corrida, placa = "placa1"){
   
   con <- dbConnect(MySQL(),
-                   user = 'root',
-                   password = 'maq12345',
+                   user = usr,
+                   password = pass,
                    host = 'localhost',
                    dbname = 'seqcoviddb')
-  
-  
   query = paste0("SELECT NUMERACION_PLACA,NETLAB,OFICIO,CT,FECHA_TM,PROCEDENCIA,APELLIDO_NOMBRE,DNI_CE,VACUNADO,MOTIVO FROM `metadata` WHERE `PLACA` = '",
                      placa,"' AND `CORRIDA` = ",corrida,";")
 
   dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
-  dbDisconnect(con)
+  dbClearResult(rs)
   return(df)
 }
 
 
-metadaEdition <- function(corrida,placa, min, max, corridaA){
+metadaEdition <- function(usr, pass, corrida,placa, min, max, corridaA){
+  
   if(is.element(corrida,corridaA)){
     corrida = corrida
   }else{
@@ -33,23 +30,24 @@ metadaEdition <- function(corrida,placa, min, max, corridaA){
   }
   
   con <- dbConnect(MySQL(),
-                   user = 'root',
-                   password = 'maq12345',
+                   user = usr,
+                   password = pass,
                    host = 'localhost',
                    dbname = 'seqcoviddb')
   query = paste0("SELECT NUMERACION_PLACA,NETLAB,CT,FECHA_TM,PROCEDENCIA,PROVINCIA,DISTRITO,APELLIDO_NOMBRE,DNI_CE,EDAD,SEXO,VACUNADO,MARCA_PRIMERAS_DOSIS,1DOSIS,2DOSIS,MARCA_3DOSIS,3DOSIS,HOSPITALIZACION,FALLECIDO FROM `metadata` WHERE `NUMERACION_PLACA` BETWEEN ",
                  min," AND ",max," AND `PLACA` = '",placa,"' AND `CORRIDA` = ",corrida," ORDER BY `metadata`.`NUMERACION_PLACA` ASC;")
   dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
-  dbDisconnect(con)
+  dbClearResult(rs)
   return(df)
 }
 
 
 library(utils)
 
-update_sql <- function(sql_id, fecha_tm , procedencia, 
+update_sql <- function(usr, pass, sql_id, fecha_tm , procedencia, 
                        provincia, distrito, nombre, dni,
                        edad, sexo, vac, marca1, Pra, Sda,
                        marca2, Tra, Hp, Dead){
@@ -72,7 +70,7 @@ update_sql <- function(sql_id, fecha_tm , procedencia,
   if(is.null(nombre) | is.na(nombre)){
     nombre <- 'NULL'
   }
-  if(is.null(dni) | is.na(dni)){
+  if(is.null(dni) | is.na(dni) | dni == ''){
     dni <- 'NULL'
   }
   if(is.null(edad) | is.na(edad)){
@@ -110,66 +108,76 @@ update_sql <- function(sql_id, fecha_tm , procedencia,
   }
   
   con <- dbConnect(MySQL(),
-                   user = 'root',
-                   password = 'maq12345',
+                   user = usr,
+                   password = pass,
                    host = 'localhost',
                    dbname = 'seqcoviddb')
   query <- paste0("UPDATE `metadata` SET `FECHA_TM` = '",fecha_tm,
-                  "', `PROCEDENCIA` = '",procedencia,"', `PROVINCIA` = '",provincia,"', `DISTRITO` = '",distrito,
-                  "', `APELLIDO_NOMBRE` = '",nombre,"', `DNI_CE` = '",dni,"', `EDAD` = '",edad,"', `SEXO` = '",sexo,
-                  "', `VACUNADO` = '",vac,"', `MARCA_PRIMERAS_DOSIS` = '",marca1,"', `1DOSIS` = '",Pra,"', `2DOSIS` = '",Sda,
-                  "', `MARCA_3DOSIS` = '",marca2,"', `3DOSIS` = '",Tra, "', `HOSPITALIZACION` = '",Hp,"', `FALLECIDO` = '",Dead,
-                  "' WHERE `metadata`.`NETLAB` = \'",sql_id,"\'")
+                  "', `PROCEDENCIA` = '",procedencia,"', `PROVINCIA` = '",
+                  provincia,"', `DISTRITO` = '",distrito,
+                  "', `APELLIDO_NOMBRE` = '",nombre,"', `DNI_CE` = '",
+                  dni,"', `EDAD` = '",edad,"', `SEXO` = '",sexo,
+                  "', `VACUNADO` = '",vac,"', `MARCA_PRIMERAS_DOSIS` = '",
+                  marca1,"', `1DOSIS` = '",Pra,"', `2DOSIS` = '",Sda,
+                  "', `MARCA_3DOSIS` = '",marca2,"', `3DOSIS` = '",
+                  Tra, "', `HOSPITALIZACION` = '",Hp,"', `FALLECIDO` = '",
+                  Dead,"' WHERE `metadata`.`NETLAB` = \'",sql_id,"\'")
+  
   query <- gsub("'NULL'", "NULL", query, fixed = TRUE)
   dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
-  dbDisconnect(con)
+  dbClearResult(rs)
   return(df)
 }
 
 
-sqlRegion <- function(){
+sqlRegion <- function(usr, pass){
   
   con <- dbConnect(MySQL(),
-                   user = 'root',
-                   password = 'maq12345',
+                   user = usr,
+                   password = pass,
                    host = 'localhost',
                    dbname = 'ubigeo')
   query = paste0("SELECT region FROM `regiones` ORDER BY `regiones`.`id` ASC;")
   dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
-  dbDisconnect(con)
+  dbClearResult(rs)
   return(df)
 }
 
-sqlProvincia <- function(region){
+sqlProvincia <- function(usr, pass,region){
   
   con <- dbConnect(MySQL(),
-                   user = 'root',
-                   password = 'maq12345',
+                   user = usr,
+                   password = pass,
                    host = 'localhost',
                    dbname = 'ubigeo')
   query = paste0("SELECT provincia FROM `provincia` WHERE `region` = '",region,"' ORDER BY `provincia`.`id-p` ASC;")
   dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
-  dbDisconnect(con)
+  dbClearResult(rs)
   return(df)
 }
 
-sqlDistrito <- function(provincia, region){
+sqlDistrito <- function(usr, pass, provincia, region){
   
   con <- dbConnect(MySQL(),
-                   user = 'root',
-                   password = 'maq12345',
+                   user = usr,
+                   password = pass,
                    host = 'localhost',
                    dbname = 'ubigeo')
-  query = paste0("SELECT distrito FROM `distrito` WHERE `provincia` = '",provincia,"' AND `region` = '",region,"' ORDER BY `distrito`.`id-d` ASC;")
+  query = paste0("SELECT distrito FROM `distrito` WHERE `provincia` = '",
+                 provincia,"' AND `region` = '",region,"' ORDER BY `distrito`.`id-d` ASC;")
   dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
   rs = dbSendQuery(con, query);
   df = fetch(rs, -1);
-  dbDisconnect(con)
+  dbClearResult(rs)
   return(df)
 }

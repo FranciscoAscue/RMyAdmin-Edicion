@@ -19,7 +19,7 @@ ui <- fluidPage( title = "RMyAdmin-Edicion",
                  div(class = "pull-right", shinyauthr::logoutUI(id = "logout")),
                  
                  # login section
-                 shinyauthr::loginUI(id = "login", title = h3(icon("biohazard"),"RMyAdmin"), 
+                 shinyauthr::loginUI(id = "login", title = h3(icon("server"), icon("biohazard"),"RMyAdmin - Edicion"), 
                                      user_title = "Usuario", pass_title = "Contraseña"),
                  
                  uiOutput("Page") )
@@ -45,10 +45,10 @@ server <- function(input, output, session) {
   
   output$point <- renderPlotly({
     
-      plot_ly(mysql_explore(), x= ~FECHA_TM, y = ~CT, color = ~MOTIVO, text= ~NETLAB, type = 'scatter', mode = "markers")
+    plot_ly(mysql_explore(), x= ~FECHA_TM, y = ~CT, color = ~MOTIVO, text= ~NETLAB, type = 'scatter', mode = "markers")
     
   })
-
+  
   output$tablemysql <- DT::renderDataTable(mysql_explore(), extensions = 'Buttons',
                                            options = list( dom = 'Blfrtip', buttons = c('copy', 'excel')),
                                            rownames = FALSE,server = FALSE, escape = FALSE, selection = 'none')
@@ -61,14 +61,20 @@ server <- function(input, output, session) {
   
   
   mysql_explore <- reactive({
-    data <- metadata_sql(corrida = input$corrida, placa = input$placa)
+    user <- credentials()$info[["user"]]
+    password <- user
+    data <- metadata_sql(usr = user, pass = password, corrida = input$corrida, placa = input$placa)
     data$FECHA_TM <- as.Date(data$FECHA_TM)
     data
   })
   
   inputData <- reactive({
     req(input$Buscar)
-    data <- metadaEdition(input$ncorrida, input$nplaca , input$minR , input$maxR, corridaActual)
+    user <- credentials()$info[["user"]]
+    password <- user
+    data <- metadaEdition(usr = user, pass = password, corrida =  input$ncorrida,
+                          placa = input$nplaca , min = input$minR , max =  input$maxR, 
+                          corridaA =  corridaActual)
     x <- create_btns(data$NETLAB)
     data <- data %>%
       dplyr::bind_cols(tibble("EDITAR" = x))
@@ -80,26 +86,15 @@ server <- function(input, output, session) {
   ############################################################################################################################################################
   
   observeEvent(input$Buscar,{
-    tryCatch({
+    
       tmp <- input$ncorrida 
       updateTextInput(session, "ncorrida", value = 0)
       updateTextInput(session, "ncorrida", value = tmp)
-      output$SqlInput <- DT::renderDataTable(inputData(), 
-                                             options = list(scrollX = TRUE),
-                                             rownames = FALSE, server = FALSE, escape = FALSE, selection = 'none')
-    },
-    
-    error = function(e){
-      showModal(
-        modalDialog(
-          title = "Ocurrio un Error!",
-          tags$i("No existe la placa o Corrida Correspondiente"),br(),br(),
-          tags$b("Error:"),br(),
-          tags$code(e$message)
-        )
-      )
-    })
-    
+      output$SqlInput <- DT::renderDataTable(inputData(), extensions = "FixedColumns",
+                                             options = list(pageLength = 25, scrollX = TRUE),
+                                             rownames = FALSE, server = FALSE, escape = FALSE, selection = 'none'
+                                          )
+  
   })
   
   
@@ -128,7 +123,7 @@ server <- function(input, output, session) {
     Dead <- inputData()[edit_row, ][["FALLECIDO"]]
     
     shiny::modalDialog(
-      title = column(12, column(3, h3(icon("id-card"))), column(4, h4("COD. NETLAB :") ), column(5 ,h4(sql_id))),
+      title = column(12, h3(icon("id-card"),"COD. NETLAB :",sql_id)),
       column(12, style = "background-color:#AED6F1;",
              column(12, column(1, h4(icon("map-marked"))), column(6, h4("Datos de Procedencia"))),
              column(6,
@@ -141,7 +136,8 @@ server <- function(input, output, session) {
              ),
              column(6, selectInput(inputId = "procedencia",
                                    label = "Selecciona Procedencia",
-                                   choices = sqlRegion(),
+                                   choices = sqlRegion(credentials()$info[["user"]], 
+                                                       credentials()$info[["user"]]),
                                    selected = procedencia)),
       ),
       
@@ -251,7 +247,7 @@ server <- function(input, output, session) {
              ),
       ),
       
-      column(12 , " "),
+      column(12 , h3(" ")),
       
       easyClose = TRUE,
       footer = div(
@@ -268,16 +264,32 @@ server <- function(input, output, session) {
   })
   
   shiny::observeEvent(input$final_edit, {
+    
+    tryCatch({
     shiny::req(!is.null(input$current_id) &
                  stringr::str_detect(input$current_id,pattern = "edit"))
     edit_row <- which(stringr::str_detect(inputData()$EDITAR, pattern = paste0("\\b", input$current_id, "\\b") ))
     
     sql_id <- inputData()[edit_row, ][["NETLAB"]]
-    
-    update_sql(sql_id, fecha_tm = input$fecha_tm, procedencia =input$procedencia , provincia =input$provincia ,
-               distrito =input$distrito ,nombre =input$apellido_nombre ,dni =input$dni , edad =input$edad ,sexo =input$sexo ,
+    user <- credentials()$info[["user"]]
+    password <- user
+    update_sql(usr = user, pass = password, sql_id, fecha_tm = input$fecha_tm, procedencia =input$procedencia , provincia =input$provincia ,
+               distrito =input$distrito ,nombre = toupper(input$apellido_nombre) ,dni =input$dni , edad =input$edad ,sexo =input$sexo ,
                vac =input$vacunado ,marca1 =input$marca1 ,Pra =input$PDosis , Sda =input$SDosis ,
                marca2 =input$marca2 ,Tra =input$TDosis , Hp =input$hospitalizacion , Dead =input$fallecido)
+    
+    },
+    
+    error = function(e){
+      showModal(
+        modalDialog(
+          title = "DNI DUPLICADO!",
+          tags$i("Revise si el paciente fue ingresado previamente"),br(),br(),
+          tags$code(e$message)
+        )
+      )
+    })
+    
   })
   
   shiny::observeEvent(input$dismiss_modal, {
@@ -300,11 +312,14 @@ server <- function(input, output, session) {
     edit_row <- which(stringr::str_detect(inputData()$EDITAR, 
                                           pattern = paste0("\\b",
                                                            input$current_id, "\\b") ))
-    provincia <- inputData()[edit_row, ][["PROVINCIA"]]
+    provin <- inputData()[edit_row, ][["PROVINCIA"]]
+    user <- credentials()$info[["user"]]
+    password <- user
     selectInput(inputId = "provincia",
                 label = "Selecciona Provincia",
-                choices = sqlProvincia(input$procedencia),
-                selected = provincia
+                choices = sqlProvincia(usr = user, pass = password,
+                                       region = input$procedencia),
+                selected = provin
     )
   })
   
@@ -315,12 +330,15 @@ server <- function(input, output, session) {
     edit_row <- which(stringr::str_detect(inputData()$EDITAR, 
                                           pattern = paste0("\\b", 
                                                            input$current_id, "\\b") ))
+    user <- credentials()$info[["user"]]
+    password <- user
     distrito <- inputData()[edit_row, ][["DISTRITO"]]
     selectInput(inputId = "distrito",
                 label = "Selecciona Distrito",
-                choices = sqlDistrito(input$provincia, input$procedencia),
-                selected = distrito
-    )
+                choices = sqlDistrito(usr = user, pass = password, 
+                                      provincia = input$provincia, 
+                                      region = input$procedencia),
+                selected = distrito)
   })
   
   
@@ -331,7 +349,6 @@ server <- function(input, output, session) {
     }
     UdateData
   })
-  
   
 }
 shinyApp(ui = ui, server = server)

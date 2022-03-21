@@ -42,6 +42,6 @@ library(stringr)
 library(readr)
 library(shinyjs)
 library(shinyauthr)
-
+library(tryCatchLog)
 ################################################################################
 
