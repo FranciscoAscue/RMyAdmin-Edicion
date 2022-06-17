@@ -3,6 +3,23 @@ source("R/ui-panel.R", local = TRUE)
 source("R/data-mysql.R", local = TRUE)
 source("config.R", local = TRUE)
 
+HabilitarCorrida <- function(){
+  
+  con <- dbConnect(MySQL(),
+                   user = "veronica",
+                   password = "veronica123",
+                   host = 'localhost',
+                   dbname = 'SARS_GENOMES')
+  query = paste0("SELECT Corrida FROM `HabilitarPlaca`;")
+  dbSendQuery(con, "SET NAMES utf8mb4;")
+  on.exit(dbDisconnect(con))
+  rs = dbSendQuery(con, query);
+  df = fetch(rs, -1);
+  dbClearResult(rs)
+  return(df)
+}
+
+
 
 create_btns <- function(x) {
   x %>% purrr::map_chr(~
@@ -15,11 +32,11 @@ create_btns <- function(x) {
 
 
 
-ui <- fluidPage( title = "RMyAdmin-Edicion",  
+ui <- fluidPage( title = "Base Datos Secuenciamiento DENGUE",  
                  div(class = "pull-right", shinyauthr::logoutUI(id = "logout")),
                  
                  # login section
-                 shinyauthr::loginUI(id = "login", title = h3(icon("server"), icon("biohazard"),"RMyAdmin - Edicion"), 
+                 shinyauthr::loginUI(id = "login", title = h3(icon("server"), icon("biohazard"),"Completar Base COVID"), 
                                      user_title = "Usuario", pass_title = "Contraseña"),
                  
                  uiOutput("Page") )
@@ -62,24 +79,25 @@ server <- function(input, output, session) {
   
   mysql_explore <- reactive({
     user <- credentials()$info[["user"]]
-    password <- user
+    password <- paste0(user,"123")
     data <- metadata_sql(usr = user, pass = password, corrida = input$corrida, placa = input$placa)
     data$FECHA_TM <- as.Date(data$FECHA_TM)
     data
   })
   
   inputData <- reactive({
+    corridaActual = HabilitarCorrida()
     req(input$Buscar)
     user <- credentials()$info[["user"]]
-    password <- user
+    password <- paste0(user,"123")
     data <- metadaEdition(usr = user, pass = password, corrida =  input$ncorrida,
                           placa = input$nplaca , min = input$minR , max =  input$maxR, 
-                          corridaA =  corridaActual)
+                          corridaA =  corridaActual$Corrida)
     x <- create_btns(data$NETLAB)
     data <- data %>%
       dplyr::bind_cols(tibble("EDITAR" = x))
     colnames(data) <- c("Nº","NETLAB","CT","FECHA_TM","PROCEDENCIA","PROVINCIA","DISTRITO","APELLIDO_NOMBRE","DNI_CE","EDAD","SEXO",
-                        "VACUNADO","MARCA_PRIMERAS_DOSIS","1DOSIS","2DOSIS","MARCA_3DOSIS","3DOSIS","HOSPITALIZACION","FALLECIDO","EDITAR")
+                        "VACUNADO","MARCA_PRIMERAS_DOSIS","1DOSIS","2DOSIS","MARCA_3DOSIS","3DOSIS","MARCA_4DOSIS","4DOSIS","HOSPITALIZACION","FALLECIDO","EDITAR")
     data
   })
   
@@ -119,6 +137,8 @@ server <- function(input, output, session) {
     Sda <- inputData()[edit_row, ][["2DOSIS"]]
     marca2 <- inputData()[edit_row, ][["MARCA_3DOSIS"]]
     Tra <- inputData()[edit_row, ][["3DOSIS"]]
+    marca4 <- inputData()[edit_row, ][["MARCA_4DOSIS"]]
+    Cta <- inputData()[edit_row, ][["4DOSIS"]]
     Hp <- inputData()[edit_row, ][["HOSPITALIZACION"]]
     Dead <- inputData()[edit_row, ][["FALLECIDO"]]
     
@@ -130,14 +150,14 @@ server <- function(input, output, session) {
                     
                     dateInput(inputId = "fecha_tm",
                               label = "Fecha de toma de muestra",
-                              language = "es", value = fecha_tm , min = "2020-01-01", max = "2022-05-28"
+                              language = "es", value = fecha_tm , min = "2020-01-01", max = "2023-06-28"
                     )
                     
              ),
              column(6, selectInput(inputId = "procedencia",
                                    label = "Selecciona Procedencia",
                                    choices = sqlRegion(credentials()$info[["user"]], 
-                                                       credentials()$info[["user"]]),
+                                                       paste0(credentials()$info[["user"]], "123")),
                                    selected = procedencia)),
       ),
       
@@ -191,7 +211,10 @@ server <- function(input, output, session) {
              column(6,
                     selectInput(inputId = "marca1",
                                 label = "Marca de Primeras dosis",
-                                choices = c('NULL','AstraZeneca-Oxford', 'Sinopharm','Pfizer-BioNTech',  'Johnson & Johnson', 'NO INDICA'),
+                                choices = c('NULL','AstraZeneca-Oxford', 'Sinopharm',
+                                            'Pfizer-BioNTech',  'Johnson & Johnson', 'Moderna', 
+                                            'Johnson & Johnson / Moderna','Johnson & Johnson / Pfizer-BioNTech',
+					    'Sinopharm / Pfizer-BioNTech', 'Covishield','NO INDICA'),
                                 selected = marca1),
              ),
       ), 
@@ -201,13 +224,13 @@ server <- function(input, output, session) {
              column(6,
                     dateInput(inputId = "PDosis",
                               label = "Fecha de Primera Dosis",
-                              language = "es", value = Pra , min = "2020-01-01", max = "2022-05-28"
+                              language = "es", value = Pra , min = "2020-01-01", max = "2023-06-28"
                     )),
              column(6, 
                     
                     dateInput(inputId = "SDosis",
                               label = "Fecha de Segunda Dosis",
-                              language = "es", value = Sda , min = "2020-01-01", max = "2022-05-28"
+                              language = "es", value = Sda , min = "2020-01-01", max = "2023-06-28"
                     )),
       ),
       
@@ -216,14 +239,28 @@ server <- function(input, output, session) {
              column(6,
                     selectInput(inputId = "marca2",
                                 label = "Marca 3ra Dosis",
-                                choices = c('NULL','AstraZeneca-Oxford', 'Sinopharm','Pfizer-BioNTech',  'Johnson & Johnson', 'NO INDICA' ),
+                                choices = c('NULL','AstraZeneca-Oxford', 'Sinopharm','Pfizer-BioNTech', 'Covishield',  'Johnson & Johnson', 'Moderna', 'NO INDICA' ),
                                 selected = marca2),
              ),
              column(6,
                     
                     dateInput(inputId = "TDosis",
                               label = "Fecha de Tercera Dosis",
-                              language = "es", value = Tra , min = "2020-01-01", max = "2022-05-28"
+                              language = "es", value = Tra , min = "2020-01-01", max = "2023-06-28"
+                    )
+                    
+             ),
+             column(6,
+                    selectInput(inputId = "marca4",
+                                label = "Marca 4ta Dosis",
+                                choices = c('NULL','AstraZeneca-Oxford', 'Sinopharm','Pfizer-BioNTech', 'Covishield',  'Johnson & Johnson', 'Moderna', 'NO INDICA' ),
+                                selected = marca4),
+             ),
+             column(6,
+                    
+                    dateInput(inputId = "CDosis",
+                              label = "Fecha de Cuarta Dosis",
+                              language = "es", value = Cta , min = "2020-01-01", max = "2023-06-28"
                     )
                     
              ),
@@ -272,11 +309,11 @@ server <- function(input, output, session) {
     
     sql_id <- inputData()[edit_row, ][["NETLAB"]]
     user <- credentials()$info[["user"]]
-    password <- user
+    password <- paste0(user,"123")
     update_sql(usr = user, pass = password, sql_id, fecha_tm = input$fecha_tm, procedencia =input$procedencia , provincia =input$provincia ,
                distrito =input$distrito ,nombre = toupper(input$apellido_nombre) ,dni =input$dni , edad =input$edad ,sexo =input$sexo ,
                vac =input$vacunado ,marca1 =input$marca1 ,Pra =input$PDosis , Sda =input$SDosis ,
-               marca2 =input$marca2 ,Tra =input$TDosis , Hp =input$hospitalizacion , Dead =input$fallecido)
+               marca2 =input$marca2 ,Tra =input$TDosis ,marca4 =input$marca4 ,Cta =input$CDosis, Hp =input$hospitalizacion , Dead =input$fallecido)
     
     },
     
@@ -314,7 +351,7 @@ server <- function(input, output, session) {
                                                            input$current_id, "\\b") ))
     provin <- inputData()[edit_row, ][["PROVINCIA"]]
     user <- credentials()$info[["user"]]
-    password <- user
+    password <- paste0(user,"123")
     selectInput(inputId = "provincia",
                 label = "Selecciona Provincia",
                 choices = sqlProvincia(usr = user, pass = password,
@@ -331,7 +368,7 @@ server <- function(input, output, session) {
                                           pattern = paste0("\\b", 
                                                            input$current_id, "\\b") ))
     user <- credentials()$info[["user"]]
-    password <- user
+    password <- paste0(user,"123")
     distrito <- inputData()[edit_row, ][["DISTRITO"]]
     selectInput(inputId = "distrito",
                 label = "Selecciona Distrito",

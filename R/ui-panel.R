@@ -35,7 +35,7 @@ DataExp <- tabPanel("EXPLORACION",
 
 
 UdateData <- navbarPage(theme = shinytheme("flatly"), 
-                        "RMyAdmin-Ingreso", 
+                        "RMyAdmin-Edicion", 
                         id="nav", 
                         tabPanel("INGRESO DE DATOS",
                                  useShinyjs(),
