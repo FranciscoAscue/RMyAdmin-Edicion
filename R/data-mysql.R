@@ -34,7 +34,7 @@ metadaEdition <- function(usr, pass, corrida,placa, min, max, corridaA){
                    password = pass,
                    host = 'localhost',
                    dbname = 'seqcoviddb')
-  query = paste0("SELECT NUMERACION_PLACA,NETLAB,CT,FECHA_TM,PROCEDENCIA,PROVINCIA,DISTRITO,APELLIDO_NOMBRE,DNI_CE,EDAD,SEXO,VACUNADO,MARCA_PRIMERAS_DOSIS,1DOSIS,2DOSIS,MARCA_3DOSIS,3DOSIS,MARCA_4DOSIS,4DOSIS,HOSPITALIZACION,FALLECIDO FROM `metadata` WHERE `NUMERACION_PLACA` BETWEEN ",
+  query = paste0("SELECT NUMERACION_PLACA,NETLAB,CT,FECHA_TM,PROCEDENCIA,PROVINCIA,DISTRITO,APELLIDO_NOMBRE,DNI_CE,EDAD,SEXO,VACUNADO,MARCA_PRIMERAS_DOSIS,1DOSIS,2DOSIS,MARCA_3DOSIS,3DOSIS,MARCA_4DOSIS,4DOSIS,HOSPITALIZACION,VERIFICADO FROM `metadata` WHERE `NUMERACION_PLACA` BETWEEN ",
                  min," AND ",max," AND `PLACA` = '",placa,"' AND `CORRIDA` = ",corrida," ORDER BY `metadata`.`NUMERACION_PLACA` ASC;")
   dbSendQuery(con, "SET NAMES utf8mb4;")
   on.exit(dbDisconnect(con))
@@ -49,7 +49,7 @@ library(utils)
 update_sql <- function(usr, pass, sql_id, fecha_tm , procedencia, 
                        provincia, distrito, nombre, dni,
                        edad, sexo, vac, marca1, Pra, Sda,
-                       marca2, Tra, marca4, Cta, Hp, Dead){
+                       marca2, Tra, marca4, Cta, Hp, morb){
   if(length(fecha_tm) == 0){
     fecha_tm <- 'NULL'
   }
@@ -110,8 +110,8 @@ update_sql <- function(usr, pass, sql_id, fecha_tm , procedencia,
   if(is.null(Hp) | is.na(Hp)){
     Hp <- 'NULL'
   }
-  if(is.null(Dead) | is.na(Dead)){
-    Dead <- 'NULL'
+  if(is.null(morb) | is.na(morb)){
+    morb <- 'NULL'
   }
   
   con <- dbConnect(MySQL(),
@@ -128,8 +128,8 @@ update_sql <- function(usr, pass, sql_id, fecha_tm , procedencia,
                   marca1,"', `1DOSIS` = '",Pra,"', `2DOSIS` = '",Sda,
                   "', `MARCA_3DOSIS` = '",marca2,"', `3DOSIS` = '",
                   Tra,"',`MARCA_4DOSIS` = '",marca4, "', `4DOSIS` = '",Cta,
-                  "', `HOSPITALIZACION` = '",Hp,"', `FALLECIDO` = '",
-                  Dead,"' WHERE `metadata`.`NETLAB` = \'",sql_id,"\'")
+                  "', `HOSPITALIZACION` = '",Hp,"', `VERIFICADO` = '",
+                  morb,"' WHERE `metadata`.`NETLAB` = \'",sql_id,"\'")
   
   query <- gsub("'NULL'", "NULL", query, fixed = TRUE)
   dbSendQuery(con, "SET NAMES utf8mb4;")

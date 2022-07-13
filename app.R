@@ -97,7 +97,7 @@ server <- function(input, output, session) {
     data <- data %>%
       dplyr::bind_cols(tibble("EDITAR" = x))
     colnames(data) <- c("Nº","NETLAB","CT","FECHA_TM","PROCEDENCIA","PROVINCIA","DISTRITO","APELLIDO_NOMBRE","DNI_CE","EDAD","SEXO",
-                        "VACUNADO","MARCA_PRIMERAS_DOSIS","1DOSIS","2DOSIS","MARCA_3DOSIS","3DOSIS","MARCA_4DOSIS","4DOSIS","HOSPITALIZACION","FALLECIDO","EDITAR")
+                        "VACUNADO","MARCA_PRIMERAS_DOSIS","1DOSIS","2DOSIS","MARCA_3DOSIS","3DOSIS","MARCA_4DOSIS","4DOSIS","HOSPITALIZACION","COMORBILIDAD","EDITAR")
     data
   })
   
@@ -140,7 +140,7 @@ server <- function(input, output, session) {
     marca4 <- inputData()[edit_row, ][["MARCA_4DOSIS"]]
     Cta <- inputData()[edit_row, ][["4DOSIS"]]
     Hp <- inputData()[edit_row, ][["HOSPITALIZACION"]]
-    Dead <- inputData()[edit_row, ][["FALLECIDO"]]
+    morb <- inputData()[edit_row, ][["COMORBILIDAD"]]
     
     shiny::modalDialog(
       title = column(12, h3(icon("id-card"),"COD. NETLAB :",sql_id)),
@@ -214,7 +214,7 @@ server <- function(input, output, session) {
                                 choices = c('NULL','AstraZeneca-Oxford', 'Sinopharm',
                                             'Pfizer-BioNTech',  'Johnson & Johnson', 'Moderna', 
                                             'Johnson & Johnson / Moderna','Johnson & Johnson / Pfizer-BioNTech',
-					    'Sinopharm / Pfizer-BioNTech', 'Covishield','NO INDICA'),
+					    'Sinopharm / Pfizer-BioNTech', 'AstraZeneca-Oxford / Pfizer-BioNTech',  'Covishield','NO INDICA'),
                                 selected = marca1),
              ),
       ), 
@@ -277,10 +277,11 @@ server <- function(input, output, session) {
                                 selected = Hp),
              ),
              column(6,
-                    selectInput(inputId = "fallecido",
-                                label = "Fallecido",
-                                choices = c("NULL","SI", "NO", "NO INDICA"),
-                                selected = Dead),
+                    selectInput(inputId = "morbilidad",
+                                label = "Co-Morbilidad",
+                                choices = c("NULL","Mayor de 65 años", "Enfermedad cardiovascular", "Diabetes Mellitus (Tipo I y II)",
+                                            "Enfermedad cerebro vascular","Sindrome de Down","Obesidad","Embarazo","Asma"),
+                                selected = morb),
              ),
       ),
       
@@ -313,7 +314,7 @@ server <- function(input, output, session) {
     update_sql(usr = user, pass = password, sql_id, fecha_tm = input$fecha_tm, procedencia =input$procedencia , provincia =input$provincia ,
                distrito =input$distrito ,nombre = toupper(input$apellido_nombre) ,dni =input$dni , edad =input$edad ,sexo =input$sexo ,
                vac =input$vacunado ,marca1 =input$marca1 ,Pra =input$PDosis , Sda =input$SDosis ,
-               marca2 =input$marca2 ,Tra =input$TDosis ,marca4 =input$marca4 ,Cta =input$CDosis, Hp =input$hospitalizacion , Dead =input$fallecido)
+               marca2 =input$marca2 ,Tra =input$TDosis ,marca4 =input$marca4 ,Cta =input$CDosis, Hp =input$hospitalizacion , morb =input$morbilidad)
     
     },
     
